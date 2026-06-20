@@ -13,13 +13,14 @@ type LikeButtonProps = {
 	delay?: number
 }
 
-const ENDPOINT = 'https://blog-liker.yysuni1001.workers.dev/api/like'
+const ENDPOINT = process.env.NEXT_PUBLIC_LIKE_API_URL || 'http://localhost:8787'
 
 export default function LikeButton({ slug = 'yysuni', delay, className }: LikeButtonProps) {
 	slug = BLOG_SLUG_KEY + slug
 	const [liked, setLiked] = useState(false)
 	const [show, setShow] = useState(false)
 	const [justLiked, setJustLiked] = useState(false)
+	const [localLikes, setLocalLikes] = useState(0)
 	const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number }>>([])
 	const [floatTexts, setFloatTexts] = useState<Array<{ id: number; text: string }>>([])
 
@@ -32,6 +33,19 @@ export default function LikeButton({ slug = 'yysuni', delay, className }: LikeBu
 	}, [])
 
 	useEffect(() => {
+		if (typeof window !== 'undefined') {
+			const saved = localStorage.getItem(`like_count_${slug}`)
+			if (saved) {
+				const val = parseInt(saved, 10) || 0
+				setLocalLikes(val)
+				if (val >= 1) {
+					setLiked(true)
+				}
+			}
+		}
+	}, [slug])
+
+	useEffect(() => {
 		if (justLiked) {
 			const timer = setTimeout(() => setJustLiked(false), 600)
 			return () => clearTimeout(timer)
@@ -42,16 +56,25 @@ export default function LikeButton({ slug = 'yysuni', delay, className }: LikeBu
 		const res = await fetch(url, { method: 'GET', cache: 'no-store' })
 		if (!res.ok) return null
 		const data = await res.json().catch(() => ({}))
-		return typeof data?.count === 'number' ? data.count : null
+		return typeof data?.likes === 'number' ? data.likes : null
 	}, [])
 
-	const { data: fetchedCount, mutate } = useSWR(slug ? `${ENDPOINT}?slug=${encodeURIComponent(slug)}` : null, fetcher, {
+	const { data: fetchedCount, mutate } = useSWR(slug ? `${ENDPOINT}/like?id=${encodeURIComponent(slug)}` : null, fetcher, {
 		revalidateOnFocus: false,
 		dedupingInterval: 1000 * 10
 	})
 
 	const handleLike = useCallback(async () => {
 		if (!slug) return
+		if (localLikes >= 5) {
+			toast('已经点很多次了，再点阿哈要笑死了')
+			return
+		}
+
+		const newLocalLikes = localLikes + 1
+		setLocalLikes(newLocalLikes)
+		localStorage.setItem(`like_count_${slug}`, newLocalLikes.toString())
+
 		setLiked(true)
 		setJustLiked(true)
 
@@ -69,15 +92,14 @@ export default function LikeButton({ slug = 'yysuni', delay, className }: LikeBu
 		setTimeout(() => setFloatTexts(prev => prev.filter(t => t.id !== Date.now())), 1200)
 
 		try {
-			const url = `${ENDPOINT}?slug=${encodeURIComponent(slug)}`
+			const url = `${ENDPOINT}/like?id=${encodeURIComponent(slug)}`
 			const res = await fetch(url, { method: 'POST' })
 			const data = await res.json().catch(() => ({}))
-			if (data.reason == 'rate_limited') toast('已经点很多次了，再点阿哈要笑死了')
-			const value = typeof data?.count === 'number' ? data.count : (fetchedCount ?? 0) + 1
+			const value = typeof data?.likes === 'number' ? data.likes : (fetchedCount ?? 0) + 1
 			await mutate(value, { revalidate: false })
 		} catch {
 		}
-	}, [slug, fetchedCount, mutate])
+	}, [slug, fetchedCount, mutate, localLikes])
 
 	const count = typeof fetchedCount === 'number' ? fetchedCount : null
 
