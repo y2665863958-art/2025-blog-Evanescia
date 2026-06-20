@@ -2,7 +2,7 @@ import { useCenterStore } from '@/hooks/use-center'
 import GithubSVG from '@/svgs/github.svg'
 import { ANIMATION_DELAY, CARD_SPACING } from '@/consts'
 import { useConfigStore } from './stores/config-store'
-import JuejinSVG from '@/svgs/juejin.svg'
+
 import EmailSVG from '@/svgs/email.svg'
 import XSVG from '@/svgs/x.svg'
 import TgSVG from '@/svgs/tg.svg'
@@ -46,6 +46,7 @@ interface SocialButtonConfig {
 	value: string
 	label?: string
 	order: number
+	icon?: string
 }
 
 export default function SocialButtons() {
@@ -111,7 +112,6 @@ export default function SocialButtons() {
 
 	const iconMap: Record<SocialButtonType, React.ComponentType<{ className?: string }>> = {
 		github: GithubSVG,
-		juejin: JuejinSVG,
 		email: EmailSVG,
 		wechat: WechatSVG,
 		x: XSVG,
@@ -233,6 +233,23 @@ export default function SocialButtons() {
 		}
 
 		if (button.type === 'link') {
+			const isImage = button.value.startsWith('/images/')
+			const iconPath = button.icon || button.value
+			const hasCustomIcon = Boolean(button.icon)
+			
+			if (isImage || hasCustomIcon) {
+				return (
+					<motion.a
+						key={button.id}
+						href={button.value}
+						target='_blank'
+						{...commonProps}
+						className='card relative flex items-center gap-2 rounded-xl px-3 py-2.5 font-medium whitespace-nowrap'>
+						<img src={iconPath} alt={button.label || ''} className='h-8 w-8 rounded-lg object-cover' />
+						{hasLabel && button.label}
+					</motion.a>
+				)
+			}
 			return (
 				<motion.a
 					key={button.id}

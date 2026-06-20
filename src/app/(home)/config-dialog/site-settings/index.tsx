@@ -15,10 +15,6 @@ export type { FileItem, ArtImageUploads, BackgroundImageUploads, SocialButtonIma
 interface SiteSettingsProps {
 	formData: SiteContent
 	setFormData: React.Dispatch<React.SetStateAction<SiteContent>>
-	faviconItem: FileItem | null
-	setFaviconItem: React.Dispatch<React.SetStateAction<FileItem | null>>
-	avatarItem: FileItem | null
-	setAvatarItem: React.Dispatch<React.SetStateAction<FileItem | null>>
 	artImageUploads: ArtImageUploads
 	setArtImageUploads: React.Dispatch<React.SetStateAction<ArtImageUploads>>
 	backgroundImageUploads: BackgroundImageUploads
@@ -30,10 +26,6 @@ interface SiteSettingsProps {
 export function SiteSettings({
 	formData,
 	setFormData,
-	faviconItem,
-	setFaviconItem,
-	avatarItem,
-	setAvatarItem,
 	artImageUploads,
 	setArtImageUploads,
 	backgroundImageUploads,
@@ -43,7 +35,7 @@ export function SiteSettings({
 }: SiteSettingsProps) {
 	return (
 		<div className='space-y-6'>
-			<FaviconAvatarUpload faviconItem={faviconItem} setFaviconItem={setFaviconItem} avatarItem={avatarItem} setAvatarItem={setAvatarItem} />
+			<FaviconAvatarUpload />
 
 			<SiteMetaForm formData={formData} setFormData={setFormData} />
 

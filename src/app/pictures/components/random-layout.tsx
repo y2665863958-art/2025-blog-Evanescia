@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { motion } from 'motion/react'
+import { motion, AnimatePresence, useMotionValue } from 'motion/react'
 import { useCenterInit, useCenterStore } from '@/hooks/use-center'
 import { Picture } from '../page'
 import siteContent from '@/config/site-content.json'
@@ -136,9 +136,12 @@ const FloatingImage = ({
 	const { maxSM, init } = useSize()
 	const bodyRef = useRef(document.body)
 	const mouseDownTimeRef = useRef<number | null>(null)
+	const hasDraggedRef = useRef(false)
 	const [zIndex, setZIndex] = useState(index)
 	const [show, setShow] = useState(false)
-	const [dragOffset, setDragOffset] = useState(() => loadSavedOffset(url))
+	const initialOffset = useMemo(() => loadSavedOffset(url), [url])
+	const x = useMotionValue(initialOffset.x)
+	const y = useMotionValue(initialOffset.y)
 
 	useEffect(() => {
 		setTimeout(() => {
@@ -158,7 +161,7 @@ const FloatingImage = ({
 		const maxRatio = 3 / 2
 		const clampedRatio = Math.min(Math.max(ratio, minRatio), maxRatio)
 
-		const baseWidth = 200
+		const baseWidth = 300
 
 		return {
 			width: baseWidth,
@@ -188,155 +191,153 @@ const FloatingImage = ({
 	}, [originalSize])
 
 	const [isZoomed, setIsZoomed] = useState(false)
-	const dragStartOffsetRef = useRef({ x: 0, y: 0 })
 
 	if (!position || !show) return null
 
+	const thumbnailLeft = centerX + position.x - displaySize.width / 2
+	const thumbnailTop = centerY + position.y - displaySize.height / 2
+	const layoutId = url
+
 	return (
 		<>
-			{isZoomed && (
-				<motion.div
-					onClick={() => {
-						setIsZoomed(false)
-					}}
-					initial={{ opacity: 0 }}
-					animate={{ opacity: 1 }}
-					transition={{ duration: 0.3 }}
-					style={{ zIndex: TOP_Z_INDEX }}
-					className='bg-card fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-xl'
-				/>
-			)}
-			<motion.div
-				drag={!isZoomed}
-				dragConstraints={bodyRef}
-				dragMomentum={false}
-				onDragStart={() => {
-					if (!isZoomed) {
-						dragStartOffsetRef.current = { ...dragOffset }
-					}
-				}}
-				onMouseDown={event => {
-					lastZIndex = lastZIndex + 1
-					setZIndex(lastZIndex)
-					mouseDownTimeRef.current = event.timeStamp
-				}}
-				onMouseUp={event => {
-					if (mouseDownTimeRef.current !== null) {
-						const duration = event.timeStamp - mouseDownTimeRef.current
-						if (duration <= 150) {
-							if (!isZoomed) {
-								setIsZoomed(true)
-							} else if (maxSM) {
-								setIsZoomed(false)
-							}
-						}
-					}
-					mouseDownTimeRef.current = null
-				}}
-				onDragEnd={(_, info) => {
-					if (!isZoomed) {
-						const newOffset = {
-							x: dragStartOffsetRef.current.x + info.offset.x,
-							y: dragStartOffsetRef.current.y + info.offset.y
-						}
-						setDragOffset(newOffset)
-						saveOffset(url, newOffset)
-					}
-				}}
-				initial={{
-					width: displaySize.width,
-					height: displaySize.height,
-					borderWidth: 8,
-					zIndex,
-					left: centerX + position.x,
-					top: centerY + position.y,
-					rotate: position.rotation,
-					scale: 0.6,
-					opacity: 0,
-					x: dragOffset.x,
-					y: dragOffset.y
-				}}
-				animate={
-					isZoomed
-						? {
-								zIndex: TOP_Z_INDEX,
-								left: centerX,
-								top: centerY,
-								rotate: 0,
-								scale: 1,
-								opacity: 1,
-								x: 0,
-								y: 0,
-								width: zoomedSize.width,
-								height: zoomedSize.height,
-								borderWidth: maxSM ? 12 : 24
-							}
-						: {
-								zIndex,
-								scale: 1,
-								opacity: 1,
-								left: centerX + position.x,
-								top: centerY + position.y,
-								rotate: position.rotation,
-								x: dragOffset.x,
-								y: dragOffset.y,
-								width: displaySize.width,
-								height: displaySize.height,
-								borderWidth: 8
-							}
-				}
-				transition={{ type: 'tween', ease: 'easeOut' }}
-				className={cn(
-					'pointer-events-auto absolute origin-center -translate-1/2 cursor-pointer shadow-xl transition-[scale]',
-					!isEditMode && !isZoomed && 'hover:scale-105'
-				)}>
-				<motion.img
-					src={url}
-					onLoad={event => {
-						const img = event.currentTarget
-						setOriginalSize({ width: img.naturalWidth, height: img.naturalHeight })
-					}}
-					draggable={false}
-					className={cn('h-full w-full object-cover select-none')}
-				/>
-				{isEditMode && !isZoomed && (
-					<motion.button
-						initial={{ opacity: 0, scale: 0.8 }}
-						animate={{ opacity: 1, scale: 1 }}
-						onClick={e => {
-							e.stopPropagation()
-							onDeleteSingle?.(pictureId, imageIndex)
+			{/* ========== 缩略图（未放大） ========== */}
+			<AnimatePresence>
+				{!isZoomed && (
+					<motion.div
+						key='thumb'
+						layoutId={layoutId}
+						drag
+						dragConstraints={bodyRef}
+						dragMomentum={false}
+						dragElastic={0}
+						onMouseDown={() => {
+							lastZIndex = lastZIndex + 1
+							setZIndex(lastZIndex)
+							mouseDownTimeRef.current = Date.now()
+							hasDraggedRef.current = false
 						}}
-						onMouseUp={e => {
-							e.stopPropagation()
+						onMouseUp={event => {
+							// 只有没有发生拖拽 + 短按才算点击打开
+							if (!hasDraggedRef.current && mouseDownTimeRef.current !== null) {
+								const duration = Date.now() - mouseDownTimeRef.current
+								if (duration <= 300) {
+									setIsZoomed(true)
+								}
+							}
+							mouseDownTimeRef.current = null
 						}}
-						className='absolute -top-2 -right-2 rounded-full bg-red-500 p-1.5 opacity-0 shadow-lg transition-all group-hover:opacity-100 hover:scale-105 hover:bg-red-600'
-						style={{ zIndex: 1 }}>
-						<svg xmlns='http://www.w3.org/2000/svg' className='h-3 w-3 text-white' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
-							<path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M6 18L18 6M6 6l12 12' />
-						</svg>
-					</motion.button>
+						onDragEnd={() => {
+							hasDraggedRef.current = true
+							saveOffset(url, { x: x.get(), y: y.get() })
+						}}
+						exit={{ opacity: 0 }}
+						style={{
+							position: 'absolute',
+							left: thumbnailLeft,
+							top: thumbnailTop,
+							x,
+							y,
+							width: displaySize.width,
+							height: displaySize.height,
+							rotate: position.rotation,
+							zIndex,
+						}}
+						className={cn(
+							'cursor-pointer shadow-xl origin-center',
+							!isEditMode && 'hover:scale-105'
+						)}>
+						<motion.img
+							src={url}
+							onLoad={event => {
+								const img = event.currentTarget
+								setOriginalSize({ width: img.naturalWidth, height: img.naturalHeight })
+							}}
+							draggable={false}
+							className='h-full w-full rounded-2xl border-[8px] border-white/80 object-cover select-none shadow-lg'
+						/>
+						{isEditMode && (
+							<motion.button
+								initial={{ opacity: 0, scale: 0.8 }}
+								animate={{ opacity: 1, scale: 1 }}
+								onClick={e => {
+									e.stopPropagation()
+									onDeleteSingle?.(pictureId, imageIndex)
+								}}
+								onMouseUp={e => {
+									e.stopPropagation()
+								}}
+								className='absolute -top-2 -right-2 rounded-full bg-red-500 p-1.5 shadow-lg hover:scale-105 hover:bg-red-600'
+								style={{ zIndex: 1 }}>
+								<svg xmlns='http://www.w3.org/2000/svg' className='h-3 w-3 text-white' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
+									<path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M6 18L18 6M6 6l12 12' />
+								</svg>
+							</motion.button>
+						)}
+					</motion.div>
 				)}
-			</motion.div>
+			</AnimatePresence>
 
-			{isZoomed && description && (
-				<motion.div
-					drag
-					dragConstraints={maxSM ? undefined : bodyRef}
-					dragMomentum={false}
-					className='fixed min-h-[150px] w-[200px] cursor-pointer p-6 shadow'
-					style={{
-						backgroundColor: siteContent.backgroundColors[groupIndex % siteContent.backgroundColors.length],
-						zIndex: TOP_Z_INDEX + 1,
-						right: maxSM ? 12 : centerX / 3,
-						top: maxSM ? 12 : centerY
-					}}
-					initial={{ opacity: 0, scale: 0.4 }}
-					animate={{ opacity: 1, scale: 1 }}>
-					<div className='text-secondary mb-2 text-xs'>{formatUploadedAt(uploadedAt)}</div>
-					<div className='text-sm'>{description}</div>
-				</motion.div>
-			)}
+			{/* ========== 放大弹窗 ========== */}
+			<AnimatePresence>
+				{isZoomed && (
+					<>
+						{/* 背景遮罩 */}
+						<motion.div
+							key='backdrop'
+							initial={{ opacity: 0 }}
+							animate={{ opacity: 1 }}
+							exit={{ opacity: 0 }}
+							onClick={() => setIsZoomed(false)}
+							className='bg-card fixed inset-0 z-50 backdrop-blur-xl'
+						/>
+
+						{/* 居中容器 + 大图 */}
+						<div key='zoomed-wrap' className='pointer-events-none fixed inset-0 z-50 flex items-center justify-center'>
+							<motion.div
+								key='zoomed'
+								layoutId={layoutId}
+								exit={{ opacity: 0 }}
+								onClick={maxSM ? () => setIsZoomed(false) : undefined}
+								className='pointer-events-auto cursor-pointer'
+								style={{
+									width: zoomedSize.width,
+									height: zoomedSize.height,
+								}}>
+								<motion.img
+									src={url}
+									draggable={false}
+									className={cn(
+										'h-full w-full rounded-2xl object-cover select-none shadow-2xl',
+										maxSM ? 'border-[12px] border-white/80' : 'border-[24px] border-white/80'
+									)}
+								/>
+							</motion.div>
+						</div>
+
+						{/* 描述卡片 */}
+						{description && (
+							<motion.div
+								key='desc'
+								drag
+								dragConstraints={maxSM ? undefined : bodyRef}
+								dragMomentum={false}
+								initial={{ opacity: 0, scale: 0.4 }}
+								animate={{ opacity: 1, scale: 1 }}
+								exit={{ opacity: 0, scale: 0.4 }}
+								className='fixed min-h-[150px] w-[200px] cursor-pointer rounded-2xl p-6 shadow-lg'
+								style={{
+									backgroundColor: siteContent.backgroundColors[groupIndex % siteContent.backgroundColors.length],
+									zIndex: 10000,
+									right: maxSM ? 12 : centerX / 3,
+									top: maxSM ? 12 : centerY,
+								}}>
+								<div className='text-secondary mb-2 text-xs'>{formatUploadedAt(uploadedAt)}</div>
+								<div className='text-sm'>{description}</div>
+							</motion.div>
+						)}
+					</>
+				)}
+			</AnimatePresence>
 		</>
 	)
 }
@@ -409,6 +410,14 @@ export const RandomLayout = ({ pictures, isEditMode = false, onDeleteSingle, onD
 		return map
 	}, [pictures])
 
+	const positionedItems = useMemo(() => {
+		return urls.map((item, index) => {
+			const picture = pictureMap.get(item.pictureId)
+			const position = getStablePosition(item.url, width, height)
+			return { item, index, picture, position }
+		})
+	}, [urls, pictureMap, width, height])
+
 	if (!urls.length || !width || !height) {
 		return null
 	}
@@ -419,28 +428,22 @@ export const RandomLayout = ({ pictures, isEditMode = false, onDeleteSingle, onD
 
 	return (
 		<>
-			{urls.map((item, index) => {
-				const picture = pictureMap.get(item.pictureId)
-				const uniqueId = item.url
-				const position = getStablePosition(uniqueId, width, height)
-
-				return (
-					<FloatingImage
-						key={uniqueId}
-						url={item.url}
-						index={index}
-						groupIndex={item.groupIndex}
-						position={position}
-						description={item.description}
-						uploadedAt={item.uploadedAt}
-						pictureId={item.pictureId}
-						imageIndex={item.imageIndex}
-						isEditMode={isEditMode}
-						onDeleteSingle={onDeleteSingle}
-						onDeleteGroup={picture ? () => onDeleteGroup?.(picture) : undefined}
-					/>
-				)
-			})}
+			{positionedItems.map(({ item, index, picture, position }) => (
+				<FloatingImage
+					key={item.url}
+					url={item.url}
+					index={index}
+					groupIndex={item.groupIndex}
+					position={position}
+					description={item.description}
+					uploadedAt={item.uploadedAt}
+					pictureId={item.pictureId}
+					imageIndex={item.imageIndex}
+					isEditMode={isEditMode}
+					onDeleteSingle={onDeleteSingle}
+					onDeleteGroup={picture ? () => onDeleteGroup?.(picture) : undefined}
+				/>
+			))}
 		</>
 	)
 }

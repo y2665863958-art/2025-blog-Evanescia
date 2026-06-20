@@ -1,23 +1,23 @@
 {
 	"meta": {
-		"title": "YYsuni",
-		"description": "YYsuni 的个人博客，记录前端开发、探索、笔记。前端 UI 更新代码仓库。",
-		"username": "Suni"
+		"title": "绯英",
+		"description": "绯英 的个人博客，记录前端开发、探索、笔记。前端 UI 更新代码仓库。",
+		"username": "绯英"
 	},
 	"theme": {
-		"colorBrand": "#2fcbe7",
-		"colorPrimary": "#5B423F",
-		"colorSecondary": "#8b7667",
-		"colorBrandSecondary": "#eec25e",
-		"colorBg": "#d4e8f3",
-		"colorBorder": "#ffffff",
-		"colorCard": "#ffffff99",
-		"colorArticle": "#ffffffcc"
+		"colorBrand": "#ff9fb3",
+		"colorPrimary": "#ffb7c5",
+		"colorSecondary": "#d4a5b1",
+		"colorBrandSecondary": "#ffc8d4",
+		"colorBg": "#fff5f7",
+		"colorBorder": "#ffe8ed",
+		"colorCard": "#ffffffcc",
+		"colorArticle": "#ffffffee"
 	},
 	"backgroundColors": [
-		"#f7da3987",
-		"#8fdbe9",
-		"#fffef8"
+		"#ffe8ed87",
+		"#ffc8d4",
+		"#fff5f7"
 	],
 	"artImages": [
 		{
@@ -30,7 +30,7 @@
 		},
 		{
 			"id": "1c7b726fe720679b",
-			"url": "/images/art/1c7b726fe720679b.jpg"
+			"url": "/images/feiying/fying2.png"
 		}
 	],
 	"currentArtImageId": "1c7b726fe720679b",
@@ -43,17 +43,18 @@
 	"currentBackgroundImageId": "",
 	"socialButtons": [
 		{
-			"id": "github",
-			"type": "github",
-			"value": "https://github.com/yysuni",
-			"label": "Github",
+			"id": "bilibili",
+			"type": "bilibili",
+			"value": "https://b23.tv/QCATZh5",
+			"label": "哔哩哔哩",
 			"order": 3
 		},
 		{
-			"id": "juejin",
-			"type": "juejin",
-			"value": "https://juejin.cn/user/2427311675422382",
-			"label": "稀土掘金",
+			"id": "ahu",
+			"type": "link",
+			"value": "/images/feiying/ahasb.jpg",
+			"icon": "/images/feiying/huanyu.jpg",
+			"label": "阿哈酒馆",
 			"order": 2
 		},
 		{

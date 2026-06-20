@@ -21,6 +21,9 @@ export default function LikeButton({ slug = 'yysuni', delay, className }: LikeBu
 	const [show, setShow] = useState(false)
 	const [justLiked, setJustLiked] = useState(false)
 	const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number }>>([])
+	const [floatTexts, setFloatTexts] = useState<Array<{ id: number; text: string }>>([])
+
+	const FLOAT_TEXTS = ['+5 笑点', '好活当赏！', '欢愉伤害！']
 
 	useEffect(() => {
 		setTimeout(() => {
@@ -52,7 +55,6 @@ export default function LikeButton({ slug = 'yysuni', delay, className }: LikeBu
 		setLiked(true)
 		setJustLiked(true)
 
-		// Create particle effects
 		const newParticles = Array.from({ length: 6 }, (_, i) => ({
 			id: Date.now() + i,
 			x: Math.random() * 60 - 30,
@@ -60,18 +62,20 @@ export default function LikeButton({ slug = 'yysuni', delay, className }: LikeBu
 		}))
 		setParticles(newParticles)
 
-		// Clear particles after animation
 		setTimeout(() => setParticles([]), 1000)
+
+		const randomText = FLOAT_TEXTS[Math.floor(Math.random() * FLOAT_TEXTS.length)]
+		setFloatTexts(prev => [...prev, { id: Date.now(), text: randomText }])
+		setTimeout(() => setFloatTexts(prev => prev.filter(t => t.id !== Date.now())), 1200)
 
 		try {
 			const url = `${ENDPOINT}?slug=${encodeURIComponent(slug)}`
 			const res = await fetch(url, { method: 'POST' })
 			const data = await res.json().catch(() => ({}))
-			if (data.reason == 'rate_limited') toast('谢谢啦😘，今天已经不能再点赞啦💕')
+			if (data.reason == 'rate_limited') toast('已经点很多次了，再点阿哈要笑死了')
 			const value = typeof data?.count === 'number' ? data.count : (fetchedCount ?? 0) + 1
 			await mutate(value, { revalidate: false })
 		} catch {
-			// ignore
 		}
 	}, [slug, fetchedCount, mutate])
 
@@ -102,6 +106,20 @@ export default function LikeButton({ slug = 'yysuni', delay, className }: LikeBu
 							exit={{ opacity: 0 }}
 							transition={{ duration: 0.8, ease: 'easeOut' }}>
 							<Heart className='fill-rose-400 text-rose-400' size={12} />
+						</motion.div>
+					))}
+				</AnimatePresence>
+
+				<AnimatePresence>
+					{floatTexts.map(ft => (
+						<motion.div
+							key={ft.id}
+							className='pointer-events-none absolute -top-2 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap font-bold text-rose-400 drop-shadow-sm'
+							initial={{ opacity: 1, y: 0 }}
+							animate={{ opacity: 0, y: -48 }}
+							exit={{ opacity: 0 }}
+							transition={{ duration: 1, ease: 'easeOut' }}>
+							{ft.text}
 						</motion.div>
 					))}
 				</AnimatePresence>
